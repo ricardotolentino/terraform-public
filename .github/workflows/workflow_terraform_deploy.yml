@@ -3,13 +3,17 @@ name: 'Resusable workflow - Terraform deploy'
 on:
   workflow_call:
     inputs:
+      defaults_shell:
+        required: false
+        type: string
+        default: pwsh
       environment:
         required: true
         type: string
       runs_on:
         required: false
         type: string
-        default: ubuntu-latest
+        default: windows-latest
       terraform_version:
         required: true
         type: string
@@ -29,7 +33,7 @@ jobs:
 
     defaults:
       run:
-        shell: bash
+        shell: ${{ inputs.defaults_shell }}
         working-directory: ${{ inputs.working_directory }}
 
     steps:
@@ -66,7 +70,7 @@ jobs:
 
     defaults:
       run:
-        shell: bash
+        shell: ${{ inputs.defaults_shell }}
         working-directory: ${{ inputs.working_directory }}
 
     steps:
