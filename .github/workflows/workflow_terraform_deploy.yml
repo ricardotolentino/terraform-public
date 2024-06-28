@@ -3,17 +3,18 @@ name: 'Resusable workflow - Terraform deploy'
 on:
   workflow_call:
     inputs:
+      # setup-terraform requires bash
       defaults_shell:
         required: false
         type: string
-        default: pwsh
+        default: bash
       environment:
         required: true
         type: string
       runs_on:
         required: false
         type: string
-        default: windows-latest
+        default: ubuntu-latest
       terraform_version:
         required: true
         type: string
@@ -22,7 +23,7 @@ on:
         type: string
 
 jobs:
-  terraform-plan:
+  job-terraform-plan:
     name: 'Terraform Plan'
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_SPN_APP_ID }}
@@ -30,6 +31,8 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
     runs-on: ${{ inputs.runs_on }}
+    outputs:
+      terraform_plan_exitcode: ${{ steps.step-terraform-plan.outputs.exitcode }}
 
     defaults:
       run:
@@ -55,22 +58,23 @@ jobs:
       run: terraform validate -no-color
 
     - name: Terraform Plan
+      id: step-terraform-plan
       run: |
-      terraform plan -no-color -input=false
-      $PlanExitCode = $LASTEXITCODE
-      "terraform_plan_exit_code=$PlanExitCode" >> $env:GITHUB_OUTPUT
+        export exitcode=0
+        terraform plan -detailed-exitcode -no-color -out tfplan || export exitcode=$?
 
-      if ($PlanExitCode -eq 1) {
-        Write-Host "Error with Terraform plan ..."
-        exit 1
-      }
-      else {
-        exit 0
-      }
+        echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
 
-  terraform-apply:
+        if [ $exitcode -eq 1 ]; then
+          echo "Error with Terraform Plan"
+          exit 1
+        else
+          exit 0
+        fi
+
+  job-terraform-apply:
     name: 'Terraform Apply'
-    if: needs.terraform-plan.outputs.terraform_plan_exit_code == 2
+    if: needs.job-terraform-plan.outputs.terraform_plan_exitcode == 2
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_SPN_APP_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_SPN_SECRET }}
@@ -78,7 +82,7 @@ jobs:
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
     runs-on: ${{ inputs.runs_on }}
     environment: ${{ inputs.environment }}
-    needs: [terraform-plan]
+    needs: [job-terraform-plan]
 
     defaults:
       run:
