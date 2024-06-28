@@ -7,7 +7,7 @@ on:
     paths:
     - .github/workflows/workflow_terraform_deploy.yml
     - .github/workflows/test_storage_account_tags.yml
-    - live/test/storage_account/tags/*
+    - live/test/storage_account_tags/*
 
 jobs:
   dev-call-workflow-terraform-deploy:

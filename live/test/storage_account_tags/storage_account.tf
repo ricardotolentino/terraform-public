@@ -15,7 +15,9 @@ resource "azurerm_storage_account" "sa" {
   name                = "${local.storage_account_name_prefix}${format("%04d", random_integer.random_storage_account_int[count.index].id)}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  tags                = {}
+  tags = {
+    foo = "test"
+  }
 
   account_tier                    = "Standard"
   account_replication_type        = "LRS"
