@@ -16,6 +16,5 @@ jobs:
     uses: ./.github/workflows/workflow_terraform_deploy.yml
     with:
       environment: dev
-      terraform_version: 1.9
       working_directory: ./live/test/storage_account_tags
     secrets: inherit
