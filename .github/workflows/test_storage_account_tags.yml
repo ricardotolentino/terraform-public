@@ -18,7 +18,7 @@ on:
 
 jobs:
   dev-call-workflow-terraform-deploy:
-    if: github.ref == 'refs/heads/gh-actions-test'
+    #if: github.ref == 'refs/heads/gh-actions-test'
     name: 'Terraform - storage_account_tags - dev'
     uses: ./.github/workflows/workflow_terraform_deploy.yml
     with:
