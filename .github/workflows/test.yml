@@ -1,0 +1,23 @@
+name: 'Initial test'
+
+on:
+  push:
+    branches:
+    - 'tf-github-action'
+    paths:
+    - .github/workflows/test.yml
+
+jobs:
+  job-test:
+    if: github.ref == 'refs/heads/tf-github-action'
+    name: Test job
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+    - uses: actions/checkout@v4
+      name: Checkout
+    - name: Test shell
+      run: |
+        Write-Output "Test workflow"
