@@ -50,16 +50,19 @@ jobs:
         terraform_version: ${{ inputs.terraform_version }}
         terraform_wrapper: false  # Set to false for `plan -detailed-exitcode` to work
 
-    - name: Configure access to private GitHub repo
-      run: git config --global url."https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com".insteadOf https://github.com
+#    - name: Configure access to private GitHub repo
+#      run: git config --global url."https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com".insteadOf https://github.com
 
     - name: Terraform init
+      id: step-terraform-init
       run: terraform init
 
     - name: Terraform format
+      id: step-terraform-format
       run: terraform fmt -check
 
     - name: Terraform validate
+      id: step-terraform-validate
       run: terraform validate -no-color
 
     - name: Terraform plan
@@ -80,6 +83,7 @@ jobs:
         }
 
     - name: Terraform show
+      id: step-terraform-show
       shell: pwsh
       run: |
         terraform show -no-color $env:tf_plan_path >> $env:tf_plan_text_path
@@ -98,7 +102,7 @@ jobs:
 
   job-terraform-apply:
     name: 'Terraform Apply'
-    if: needs.job-terraform-plan.outputs.terraform_plan_exitcode == 2
+    if: (needs.job-terraform-plan.outputs.terraform_plan_exitcode == 2) && (github.event_name == 'push')
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_SPN_APP_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_SPN_SECRET }}

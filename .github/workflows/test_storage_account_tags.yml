@@ -3,7 +3,14 @@ name: 'Test - storage_account_tags'
 on:
   push:
     branches:
-    - 'gh-actions-test'
+    - main
+    paths:
+    - .github/workflows/workflow_terraform_deploy.yml
+    - .github/workflows/test_storage_account_tags.yml
+    - live/test/storage_account_tags/*
+  pull_request:
+    branches:
+    - main
     paths:
     - .github/workflows/workflow_terraform_deploy.yml
     - .github/workflows/test_storage_account_tags.yml
@@ -11,7 +18,7 @@ on:
 
 jobs:
   dev-call-workflow-terraform-deploy:
-    if: github.ref == 'refs/heads/gh-actions-test'
+    #if: github.ref == 'refs/heads/gh-actions-test'
     name: 'Terraform - storage_account_tags - dev'
     uses: ./.github/workflows/workflow_terraform_deploy.yml
     with:
