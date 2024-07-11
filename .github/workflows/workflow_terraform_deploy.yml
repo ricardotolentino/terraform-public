@@ -54,12 +54,15 @@ jobs:
       run: git config --global url."https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com".insteadOf https://github.com
 
     - name: Terraform init
+      id: step-terraform-init
       run: terraform init
 
     - name: Terraform format
+      id: step-terraform-format
       run: terraform fmt -check
 
     - name: Terraform validate
+      id: step-terraform-validate
       run: terraform validate -no-color
 
     - name: Terraform plan
@@ -96,9 +99,36 @@ jobs:
         name: ${{ env.tf_plan_text_artifact_name }}
         path: ${{ env.tf_plan_text_path }}
 
+    - uses: actions/github-script@v6
+      if: github.event_name == 'pull_request'
+      env:
+        PLAN: "terraform\n${{ steps.step-terraform-plan.outputs.stdout }}"
+      with:
+        script: |
+          const output = `#### Terraform Format and Style 🖌\`${{ steps.step-terraform-format.outcome }}\`
+          #### Terraform Initialization ⚙️\`${{ steps.step-terraform-init.outcome }}\`
+          #### Terraform Validation 🤖\`${{ steps.step-terraform-validate.outcome }}\`
+          #### Terraform Plan 📖\`${{ steps.step-terraform-plan.outcome }}\`
+
+          <details><summary>Show Plan</summary>
+
+          \`\`\`\n
+          ${process.env.PLAN}
+          \`\`\`
+
+          </details>
+          *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          })
+
   job-terraform-apply:
     name: 'Terraform Apply'
-    if: needs.job-terraform-plan.outputs.terraform_plan_exitcode == 2
+    if: (needs.job-terraform-plan.outputs.terraform_plan_exitcode == 2) && (github.event_name == 'push')
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_SPN_APP_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_SPN_SECRET }}

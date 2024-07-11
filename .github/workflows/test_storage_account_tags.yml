@@ -8,6 +8,13 @@ on:
     - .github/workflows/workflow_terraform_deploy.yml
     - .github/workflows/test_storage_account_tags.yml
     - live/test/storage_account_tags/*
+  pull_request:
+    branches:
+    - gh-actions-test-*
+    paths:
+    - .github/workflows/workflow_terraform_deploy.yml
+    - .github/workflows/test_storage_account_tags.yml
+    - live/test/storage_account_tags/*
 
 jobs:
   dev-call-workflow-terraform-deploy:
