@@ -13,10 +13,16 @@ terraform {
     resource_group_name  = "terraform-state-rg-01"
     storage_account_name = "rttfstate01"
     container_name       = "tfstate"
-    key                  = "storage-account-tags.terraform.tfstate"
+    key                  = "test-rg-dev.terraform.tfstate"
   }
 }
 
 provider "azurerm" {
+  features {}
+}
+
+provider "azurerm" {
+  subscription_id = "6c42675f-87d4-4c44-abd7-919a50d0d2e7"
+  alias           = "dev"
   features {}
 }

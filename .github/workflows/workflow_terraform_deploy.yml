@@ -1,51 +1,175 @@
-name: 'Resusable workflow - Terraform deploy'
+name: 'Resusable workflow - Terraform plan and apply'
 
 on:
   workflow_call:
     inputs:
-      environment:
+      environment_plan:
         required: true
         type: string
-      working-directory:
+      environment_apply:
+        required: true
+        type: string
+      runs_on:
+        required: false
+        type: string
+        default: windows-latest
+        #default: ubuntu-latest
+      terraform_version:
+        required: false
+        type: string
+        default: '1.9'
+      working_directory:
         required: true
         type: string
 
 jobs:
-  terraform:
-    name: 'Terraform'
+  job-terraform-plan:
+    name: 'Terraform Plan'
+    runs-on: ${{ inputs.runs_on }}
+    environment: ${{ inputs.environment_plan }}
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_SPN_APP_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_SPN_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+      tf_plan_path: ${{ github.workspace }}\tfplan
+      tf_plan_text_path: ${{ github.workspace }}\tfplan.txt
+      tf_plan_artifact_name: tfplan_${{ github.run_number }}
+      tf_plan_text_artifact_name: tfplantext_${{ github.run_number }}
+    outputs:
+      terraform_plan_exitcode: ${{ steps.step-terraform-plan.outputs.exitcode }}
 
     defaults:
       run:
-        shell: bash
-        working-directory: ${{ inputs.working-directory }}
+        shell: bash   # setup-terraform requires bash
+        working-directory: ${{ inputs.working_directory }}
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: hashicorp/setup-terraform@v2
+    - uses: actions/checkout@v4
+      name: Checkout
+
+    - uses: hashicorp/setup-terraform@v3
+      name: Setup Terraform '${{ inputs.terraform_version }}'
       with:
-        terraform_version: ~1.3.0
- 
+        terraform_version: ${{ inputs.terraform_version }}
+        terraform_wrapper: false  # Set to false for `plan -detailed-exitcode` to work
+
+#    - name: Configure access to private GitHub repo
+#      run: git config --global url."https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com".insteadOf https://github.com
+
+    - name: Terraform init
+      id: step-terraform-init
+      run: terraform init
+
+    - name: Terraform format
+      id: step-terraform-format
+      run: terraform fmt -check
+
+    - name: Terraform validate
+      id: step-terraform-validate
+      run: terraform validate -no-color
+
+    - name: Terraform plan
+      id: step-terraform-plan
+      shell: pwsh
+      run: |
+        terraform plan -detailed-exitcode -no-color -out $env:tf_plan_path
+        $ExitCode = $LASTEXITCODE
+
+        "exitcode=$ExitCode" >> $env:GITHUB_OUTPUT
+
+        if ($ExitCode -eq 1) {
+            Write-Output "::error Error with Terraform plan"
+            exit 1
+        }
+        else {
+            exit 0
+        }
+
+    - name: Terraform show
+      id: step-terraform-show
+      shell: pwsh
+      run: |
+        terraform show -no-color $env:tf_plan_path >> $env:tf_plan_text_path
+
+    - name: Publish tfplan
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.tf_plan_artifact_name }}
+        path: ${{ env.tf_plan_path }}
+
+    - name: Publish tfplan.txt
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.tf_plan_text_artifact_name }}
+        path: ${{ env.tf_plan_text_path }}
+
+  job-terraform-apply:
+    name: 'Terraform Apply'
+    if: (needs.job-terraform-plan.outputs.terraform_plan_exitcode == 2) && (github.event_name == 'push')
+    needs: [job-terraform-plan]
+    runs-on: ${{ inputs.runs_on }}
+    environment: ${{ inputs.environment_apply }}
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_SPN_APP_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_SPN_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      tf_plan_text_artifact_name: tfplantext_${{ github.run_number }}
+      tf_plan_text_artifact_path: ${{ github.workspace }}\tfplan.txt
+      tf_apply_plan_path: ${{ github.workspace }}\tfplan_apply
+      tf_apply_plan_text_path: ${{ github.workspace }}\tfplan_apply.txt
+
+    defaults:
+      run:
+        shell: bash   # setup-terraform requires bash
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+    - uses: actions/checkout@v4
+      name: Checkout
+
+    - uses: hashicorp/setup-terraform@v3
+      name: Setup Terraform '${{ inputs.terraform_version }}'
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+        terraform_wrapper: false
+
     - name: Configure access to private GitHub repo
       run: git config --global url."https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com".insteadOf https://github.com
 
-    - name: Terraform Init
+    - name: Terraform init
       run: terraform init
 
-    - name: Terraform Format
-      run: terraform fmt -check
+    - name: Terraform plan
+      shell: pwsh
+      run: |
+        terraform plan -no-color -out $env:tf_apply_plan_path
 
-    - name: Terraform Validate
-      run: terraform validate -no-color
+    - name: Terraform show
+      shell: pwsh
+      run: |
+        terraform show -no-color $env:tf_apply_plan_path >> $env:tf_apply_plan_text_path
 
-    - name: Terraform Plan
-      run: terraform plan -no-color -input=false
+    - uses: actions/download-artifact@v4
+      name: Download plan artifact from Terraform plan job
+      with:
+        name: ${{ env.tf_plan_text_artifact_name }}
+        path: ${{ github.workspace }}
 
-    - name: Terraform Apply
-      run: terraform apply -auto-approve -input=false
+    - name: Validate plan is current
+      shell: pwsh
+      run: |
+        # Compare the plan text file (from this job) with the artifact plan text file (from the plan job).
+        # Continue if both plan text files are the same.
+        # Throw an error if there's a difference, indicating there has been a change in Azure since the plan was created.
+        fc.exe $env:tf_apply_plan_text_path $env:tf_plan_text_artifact_path
+
+        # Use fc.exe exit code, which will be True if the files are the same
+        if (-Not ($?)) {
+          Write-Output "##[error]Terraform plan is out-of-date. The Azure resources involved in the plan have been modified since the plan was generated. Run this workflow again to generate a new Terraform plan."
+          exit 1
+        }
+
+    - name: Terraform apply
+      run: terraform apply -auto-approve -input=false $tf_plan_path
