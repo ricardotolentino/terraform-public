@@ -1,0 +1,28 @@
+name: 'Test - RG - prod - eastus2'
+
+on:
+  push:
+    branches:
+    - main
+    paths:
+    - .github/workflows/test_rg_prod_eastus2.yml
+    - live/test/rg/prod_eastus2/*
+    - modules/rg/*
+  pull_request:
+    branches:
+    - main
+    paths:
+    - .github/workflows/test_rg_prod_eastus2.yml
+    - live/test/rg/prod_eastus2/*
+    - modules/rg/*
+
+jobs:
+  prod-call-workflow-terraform-deploy:
+    #if: github.ref == 'refs/heads/gh-actions-test'
+    name: 'RG - prod - eastus2'
+    uses: ./.github/workflows/workflow_terraform_deploy.yml
+    with:
+      environment_plan: prod_no_approvals
+      environment_apply: prod
+      working_directory: ./live/test/rg/prod_eastus2
+    secrets: inherit
