@@ -6,4 +6,7 @@ module "rg" {
 
   location = "eastus2"
   suffix   = "public-test-dev-eastus2"
+  tags = {
+    env = "dev"
+  }
 }
