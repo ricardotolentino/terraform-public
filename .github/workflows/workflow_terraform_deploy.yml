@@ -3,7 +3,10 @@ name: 'Resusable workflow - Terraform plan and apply'
 on:
   workflow_call:
     inputs:
-      environment:
+      environment_plan:
+        required: true
+        type: string
+      environment_apply:
         required: true
         type: string
       runs_on:
@@ -22,6 +25,8 @@ on:
 jobs:
   job-terraform-plan:
     name: 'Terraform Plan'
+    runs-on: ${{ inputs.runs_on }}
+    environment: ${{ inputs.environment_plan }}
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_SPN_APP_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_SPN_SECRET }}
@@ -31,7 +36,6 @@ jobs:
       tf_plan_text_path: ${{ github.workspace }}\tfplan.txt
       tf_plan_artifact_name: tfplan_${{ github.run_number }}
       tf_plan_text_artifact_name: tfplantext_${{ github.run_number }}
-    runs-on: ${{ inputs.runs_on }}
     outputs:
       terraform_plan_exitcode: ${{ steps.step-terraform-plan.outputs.exitcode }}
 
@@ -103,6 +107,9 @@ jobs:
   job-terraform-apply:
     name: 'Terraform Apply'
     if: (needs.job-terraform-plan.outputs.terraform_plan_exitcode == 2) && (github.event_name == 'push')
+    needs: [job-terraform-plan]
+    runs-on: ${{ inputs.runs_on }}
+    environment: ${{ inputs.environment_apply }}
     env:
       ARM_CLIENT_ID: ${{ secrets.AZURE_SPN_APP_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_SPN_SECRET }}
@@ -112,9 +119,6 @@ jobs:
       tf_plan_text_artifact_path: ${{ github.workspace }}\tfplan.txt
       tf_apply_plan_path: ${{ github.workspace }}\tfplan_apply
       tf_apply_plan_text_path: ${{ github.workspace }}\tfplan_apply.txt
-    runs-on: ${{ inputs.runs_on }}
-    environment: ${{ inputs.environment }}
-    needs: [job-terraform-plan]
 
     defaults:
       run:

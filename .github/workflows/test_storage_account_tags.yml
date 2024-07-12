@@ -22,6 +22,7 @@ jobs:
     name: 'Terraform - storage_account_tags - dev'
     uses: ./.github/workflows/workflow_terraform_deploy.yml
     with:
-      environment: dev
+      environment_plan: prod_no_approvals
+      environment_apply: prod
       working_directory: ./live/test/storage_account_tags
     secrets: inherit
