@@ -6,4 +6,7 @@ module "rg" {
 
   location = "eastus2"
   suffix   = "public-test-prod-eastus2"
+  tags = {
+    evn = "prod"
+  }
 }
