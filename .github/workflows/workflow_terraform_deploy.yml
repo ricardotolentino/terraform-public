@@ -27,15 +27,16 @@ jobs:
   job-terraform-plan:
     name: 'Terraform Plan'
     env:
-      ARM_CLIENT_ID: ${{ secrets.AZURE_SPN_APP_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.AZURE_SPN_SECRET }}
+      ARM_USE_MSI: true
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       tf_plan_path: ${{ github.workspace }}/tfplan
       tf_plan_text_path: ${{ github.workspace }}/tfplan.txt
       tf_plan_artifact_name: tfplan_${{ github.run_number }}
       tf_plan_text_artifact_name: tfplantext_${{ github.run_number }}
-    runs-on: ${{ inputs.runs_on }}
+    #runs-on: ${{ inputs.runs_on }}
+    runs-on:
+      labels: [dev]
     environment: ${{ inputs.environment_plan }}
     outputs:
       terraform_plan_exitcode: ${{ steps.step-terraform-plan.outputs.exitcode }}
@@ -57,6 +58,13 @@ jobs:
 
 #    - name: Configure access to private GitHub repo
 #      run: git config --global url."https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com".insteadOf https://github.com
+
+#    - name: az login
+#      uses: azure/login@v2
+#      with:
+#        auth-type: IDENTITY
+#        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+#        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: Terraform init
       run: |
