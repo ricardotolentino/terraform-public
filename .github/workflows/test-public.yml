@@ -1,0 +1,59 @@
+name: 'Initial test'
+
+on:
+  push:
+    branches:
+    - 'tf-github-action'
+    paths:
+    - .github/workflows/test-public.yml
+
+jobs:
+  job-test:
+    if: github.ref == 'refs/heads/tf-github-action'
+    name: Test job
+    #runs-on: [dev]
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./live/test/storage_account_tags
+    steps:
+    - uses: actions/checkout@v4
+      name: Checkout
+
+    - name: Test shell
+      run: |
+        echo "Test workflow..."
+        echo "Zip help ..."
+        zip -h
+        echo "ls ..."
+        ls
+        echo "az version ..."
+        az version
+
+    - name: az login
+      run: |
+        /home/cloud/azlogin.sh
+
+        echo "az account list ..."
+        az account list
+
+        echo "az account show ..."
+        az account show
+
+        echo "printenv PATH"
+        printenv PATH
+
+        echo "whereis az"
+        whereis az
+
+    - uses: hashicorp/setup-terraform@v3
+      name: Setup Terraform '1.9'
+      with:
+        terraform_version: 1.9
+        terraform_wrapper: false  # Set to false for `plan -detailed-exitcode` to work
+
+    - name: Terraform init
+      run: |
+        terraform init

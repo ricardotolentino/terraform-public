@@ -37,3 +37,5 @@ terraform.rc
 
 live/ad/csv/*.csv
 locals_sensitive.tf
+
+*.sh
