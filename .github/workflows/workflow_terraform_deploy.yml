@@ -259,6 +259,27 @@ jobs:
           exit 0
         fi
 
+    - name: Azure login
+      uses: azure/login@v2
+      with:
+        creds: '{"clientId":"${{ secrets.AZURE_SPN_APP_ID }}","clientSecret":"${{ secrets.AZURE_SPN_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+    - name: Remove resource locks
+      run: |
+        # Select the Azure resources that are planned for an "update" or "delete"
+        # ("create" can be ignored, since the resource doesn't have a lock yet)
+        resource_ids=$(terraform show -no-color -json "$tf_apply_plan_path" | jq -r '.resource_changes[] | select((.change.actions[0]=="update" or .change.actions[0]=="delete") and (.type | startswith("azurerm_"))) | .change.before.id')
+
+        # Iterate over each resource ID, and delete all locks (including locks not managed by Terraform)
+        for resource_id in $resource_ids; do
+            echo "Listing locks for '$resource_id' ..."
+            for lock_id in $(az lock list --resource "$resource_id" --query "[].id" -o tsv); do
+                echo "Deleting lock '$lock_id' ..."
+                az lock delete --ids "$lock_id"
+            done
+        done
+
     - name: Terraform apply
       run: |
-        terraform apply -auto-approve -input=false "$tf_plan_path"
+        # Don't use the plan, which will not recreate the deleted resource locks
+        terraform apply -auto-approve -input=false

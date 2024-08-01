@@ -1,0 +1,20 @@
+name: 'Test - nsg_lock'
+
+on:
+  push:
+    branches:
+    - 'gh-actions-test'
+    paths:
+    - .github/workflows/workflow_terraform_deploy.yml
+    - .github/workflows/test_nsg_lock.yml
+    - live/test/nsg_lock/*
+
+jobs:
+  dev-call-workflow-terraform-deploy:
+    name: 'Terraform - nsg_lock'
+    uses: ./.github/workflows/workflow_terraform_deploy.yml
+    with:
+      environment_plan: prod_no_approvals
+      environment_apply: prod
+      working_directory: ./live/test/nsg_lock
+    secrets: inherit
