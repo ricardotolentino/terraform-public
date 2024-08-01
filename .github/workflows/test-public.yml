@@ -3,13 +3,13 @@ name: 'Initial test'
 on:
   push:
     branches:
-    - 'tf-github-action'
+    - tf-github-action
+    - tmp
     paths:
     - .github/workflows/test-public.yml
 
 jobs:
   job-test:
-    if: github.ref == 'refs/heads/tf-github-action'
     name: Test job
     #runs-on: [dev]
     runs-on: ubuntu-latest
@@ -24,36 +24,42 @@ jobs:
 
     - name: Test shell
       run: |
-        echo "Test workflow..."
-        echo "Zip help ..."
-        zip -h
-        echo "ls ..."
-        ls
-        echo "az version ..."
-        az version
+        echo "GITHUB_REF_NAME = '$GITHUB_REF_NAME'"
 
-    - name: az login
+  job-tmp:
+    name: Job for 'tmp'
+    if: (github.ref_name == 'tmp')
+    runs-on: ubuntu-latest
+    needs: [job-test]
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./live/test/storage_account_tags
+    steps:
+    - uses: actions/checkout@v4
+      name: Checkout
+
+    - name: Test shell
       run: |
-        /home/cloud/azlogin.sh
+        echo "This should be branch 'tmp'"
+        echo "GITHUB_REF_NAME = '$GITHUB_REF_NAME'"
 
-        echo "az account list ..."
-        az account list
+  job-tf-github-action:
+    name: Job for 'tf-github-action'
+    if: (github.ref_name == 'tf-github-action')
+    runs-on: ubuntu-latest
+    needs: [job-test]
 
-        echo "az account show ..."
-        az account show
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./live/test/storage_account_tags
+    steps:
+    - uses: actions/checkout@v4
+      name: Checkout
 
-        echo "printenv PATH"
-        printenv PATH
-
-        echo "whereis az"
-        whereis az
-
-    - uses: hashicorp/setup-terraform@v3
-      name: Setup Terraform '1.9'
-      with:
-        terraform_version: 1.9
-        terraform_wrapper: false  # Set to false for `plan -detailed-exitcode` to work
-
-    - name: Terraform init
+    - name: Test shell
       run: |
-        terraform init
+        echo "This should be branch 'tf-github-action'"
+        echo "GITHUB_REF_NAME = '$GITHUB_REF_NAME'"
