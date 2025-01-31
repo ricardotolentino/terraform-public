@@ -1,0 +1,26 @@
+name: 'Test - GCP Demo'
+
+on:
+  push:
+    branches:
+    - gcp
+    paths:
+    - .github/workflows/test_gcp_demo.yml
+    - live/test/rg/gcloud_demo/*
+  pull_request:
+    branches:
+    - gcp
+    paths:
+    - .github/workflows/test_gcp_demo.yml
+    - live/test/rg/gcloud_demo/*
+
+jobs:
+  gcp-demo-call-workflow-terraform-deploy:
+    #if: github.ref == 'refs/heads/gh-actions-test'
+    name: 'GCP Demo'
+    uses: ./.github/workflows/workflow_terraform_deploy_gcp.yml
+    with:
+      environment_plan: dev_no_approvals
+      environment_apply: dev
+      working_directory: ./live/test/gcloud_demo
+    secrets: inherit
